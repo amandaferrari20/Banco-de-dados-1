@@ -1,4 +1,4 @@
--- https://github.com/amandaferrari20/Banco-de-dados-1/tree/main/Mecanica3.0
+-- https://github.com/amandaferrari20/Banco-de-dados-1/edit/main/ConsultaMecania/mec.sql
 DROP TABLE IF EXISTS funcionario, funcionario_atendente, funcionario_mecanico,  especialidade, mecanico_tem_especialidade, ferramenta
 , mecanico_utiliza_ferramenta, reparo, pedido, cliente_mecanica, peca, tipo, equipamento, reparo_equipamento, ferramenta_peca;
 
@@ -278,7 +278,7 @@ insert into tipo values(1,'Motosserra a Gasolina','O tanque de gasolina típico 
  insert into reparo_equipamento values(1,2),(2,5),(3,4),(4,1),(5,3),(6,6),
  (7,10),(8,9),(9,8),(10,7);
  
--- selecione os equipamentos que não são do tipo Roçadeira a gasolina
+-- 1. selecione os equipamentos que não são do tipo Roçadeira a gasolina
  select *
  from equipamento e
  where  not exists (select *
@@ -286,20 +286,29 @@ insert into tipo values(1,'Motosserra a Gasolina','O tanque de gasolina típico 
 					where T.nome = 'Roçadeira a gasolina' 
                     and ID = e.ID_tipo);
  
- -- selecione os reparos que utilizaram a peça 3 e o preço dela
+ --  2. selecione os reparos que utilizaram a peça 3 e o preço dela
+ -- forma 1
  select R.ID as ID_REPARO, P.valor as VALOR_PECA
  from reparo R, peca P
  where R.ID = P.ID_reparo
  and P.ID_p = 3;
+-- forma 2
+select R.ID as ID_REPARO, P.valor as VALOR_PECA
+from reparo R, peca P
+where R.ID = P.ID_reparo
+and exists (select *
+	    from peca PE
+        where PE.ID_p = 3
+        and PE.ID_p = P.ID_p);
  
- -- selecione a peça mais cara e o reparo para qual foi usada
+ -- 3. selecione a peça mais cara e o reparo para qual foi usada
  select P.ID_p as ID_PECA, P.valor as VALOR, R.ID as ID_REPARO, P.descricao as DESCRICAO_PECA
  from peca P, reparo R
  where P.ID_reparo = R.ID 
  and P.valor>=ALL(select P2.valor
                 from peca P2);
  
- -- selecione o cliente(s) dono(s) do(s) equipamento(s) da marca FORTGPRO e qual 
+ --  4. selecione o cliente(s) dono(s) do(s) equipamento(s) da marca FORTGPRO e qual 
  -- peca foi colocada no reparo dessa maquina.
  select *
  from cliente_mecanica C, equipamento E, peca P, reparo_equipamento R
@@ -308,7 +317,7 @@ insert into tipo values(1,'Motosserra a Gasolina','O tanque de gasolina típico 
  and R.ID_reparo = P.ID_reparo
  and e.ID_equi = R.ID_equipamento;
  
- -- selecione os funcionarios que são atendentes com salario menor que a media salarial dos
+ -- 5. selecione os funcionarios que são atendentes com salario menor que a media salarial dos
  -- mecanicos
  select *
  from funcionario F, funcionario_atendente FA
@@ -317,30 +326,51 @@ insert into tipo values(1,'Motosserra a Gasolina','O tanque de gasolina típico 
                     from funcionario F1, funcionario_mecanico FM
                     where FM.CPF_m = F1.CPF);
 
--- selecione o 'Técnico de Máquinas' e o reparo que ele fez
+-- 6. selecione o 'Técnico de Máquinas' e o reparo que ele fez
+-- forma 1
 select distinct *
 from funcionario_mecanico F, mecanico_tem_especialidade ME, especialidade E, reparo R
 where F.CPF_m = ME.CPF_mec
-and R.CPF_mecanico = F.CPFs_m
+and R.CPF_mecanico = F.CPF_m
 and E.nome = 'Técnico de Máquinas'
 and E.ID_esp = ME.ID_esp;
+-- forma 2
+select distinct *
+from funcionario_mecanico F, mecanico_tem_especialidade ME, reparo R
+where F.CPF_m = ME.CPF_mec
+and R.CPF_mecanico = F.CPF_m
+and not exists(select *
+               from especialidade E
+               where E.nome != 'Técnico de Máquinas'
+			   and E.ID_esp = ME.ID_esp);
 
--- separe as peças em grupos cujo o preço seja maior que alguma peça
+-- 7. separe as peças em grupos cujo o preço seja maior que alguma peça
 select *
 from peca P
 group by P.ID_p
 having P.valor >ANY(select P2.valor
                     from peca P2) ;
 
--- selecione os esquipamentos e os donos, cujo o preço das peças usadas no reparo seja > 100 reais
+-- 8. selecione os esquipamentos e os donos, cujo o preço das peças usadas no reparo seja > 100 reais
+-- forma 1
 select *
 from equipamento E, cliente_mecanica C, peca P, reparo_equipamento RE
 where E.CPF_cliente = C.CPF_c
 and RE.ID_equipamento = E.ID_equi
 and P.ID_reparo = RE.ID_reparo
 and P.valor > 100;
+-- forma 2
+select *
+from equipamento E, cliente_mecanica C, peca P, reparo_equipamento RE
+where E.CPF_cliente = C.CPF_c
+and RE.ID_equipamento = E.ID_equi
+and P.ID_reparo = RE.ID_reparo
+and not exists (select PE.valor
+                from peca PE
+                where PE.ID_p = P.ID_p
+                and PE.valor<=100);
 
--- selecione os pedidos que foram feitos a pertir do dia '2022-02-03' e a qual equipamento 
+-- 9. selecione os pedidos que foram feitos a pertir do dia '2022-02-03' e a qual equipamento 
 -- se refere
 -- forma 1
 select distinct*
@@ -359,14 +389,9 @@ and not exists(select PEE.dia
                and PEE.dia<= '2022-02-03');
 
 
--- separe os equipamentos por tipo e conte quantos equipamentos tem em cada tipo
+-- 10. separe os equipamentos por tipo e conte quantos equipamentos tem em cada tipo
 select count(T.ID), T.nome
 from equipamento E, tipo T
 where E.ID_tipo = T.ID
 group by T.ID
-
-
-
-
-
 
